@@ -317,10 +317,11 @@ def not_saturday():
 
 def get_feedback_data(instructor_email):
     query = """
-        SELECT CourseCode2, DateOfFeedback, StudentName, Week, Question1Rating, Question2Rating, Remarks, studentemaiid
-        FROM feedback
-        WHERE instructorEmailID = %s AND DateOfFeedback >= (CURRENT_DATE - INTERVAL '2 weeks')
-        ORDER BY CourseCode2, Week, DateOfFeedback DESC
+        SELECT f.CourseCode2, f.DateOfFeedback, f.StudentName, f.Week, f.Question1Rating, f.Question2Rating, f.Remarks, f.studentemaiid, c.course_name
+        FROM feedback f
+        JOIN courses c ON f.CourseCode2 = CAST(c.course_id AS VARCHAR)
+        WHERE f.instructorEmailID = %s AND f.DateOfFeedback >= (CURRENT_DATE - INTERVAL '2 weeks')
+        ORDER BY f.CourseCode2, f.Week, f.DateOfFeedback DESC
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -328,7 +329,7 @@ def get_feedback_data(instructor_email):
     feedback_data = cursor.fetchall()
     cursor.close()
     conn.close()
-    
+
     # Group remarks by course and week
     grouped_remarks = {}
     for row in feedback_data:
@@ -340,8 +341,9 @@ def get_feedback_data(instructor_email):
         if week not in grouped_remarks[course]:
             grouped_remarks[course][week] = []
         grouped_remarks[course][week].append(remark)
-    
+
     return feedback_data, grouped_remarks
+
 
 
 def calculate_average_ratings_by_week(feedback_data):
@@ -389,31 +391,28 @@ def teacher_portal():
     # Group feedback data by course
     feedback_by_course = {}
     for row in feedback_data:
-        course_id = row[0]  # Assuming CourseCode2 is the first column
+        course_id = row[0]  # CourseCode2 (course ID remains unchanged)
+        course_name = row[8]  # Course name is now the last column
         if course_id not in feedback_by_course:
-            feedback_by_course[course_id] = []
-        feedback_by_course[course_id].append(row)
+            feedback_by_course[course_id] = {
+                'course_name': course_name,
+                'data': []
+            }
+        feedback_by_course[course_id]['data'].append(row)
 
     course_summaries = {}
-    for course_id, course_data in feedback_by_course.items():
+    for course_id, course_info in feedback_by_course.items():
+        course_data = course_info['data']
         avg_ratings = calculate_average_ratings_by_week(course_data)
         dist_q1, dist_q2 = calculate_rating_distributions(course_data)
-        latest_date = max(row[1] for row in course_data)  # Assuming date is the second column
+        latest_date = max(row[1] for row in course_data)  # DateOfFeedback remains at index 1
         course_summaries[course_id] = {
+            'course_name': course_info['course_name'],  # Now we have the course name
             'avg_ratings': avg_ratings,
             'distribution_q1': dist_q1,
             'distribution_q2': dist_q2,
             'latest_date': latest_date
         }
-    # Prepare data for heartbeat-like graph
-    # Extract weeks and average ratings for Q1
-    weeks = []
-    avg_q1_ratings = []
-    for course_id, summary in course_summaries.items():
-        for week, (avg_q1, avg_q2, feedback_count) in summary['avg_ratings'].items():
-            if week not in weeks:
-                weeks.append(week)
-                avg_q1_ratings.append(avg_q1)
 
     if request.args.get('data') == 'json':
         return jsonify(course_summaries)
@@ -425,7 +424,6 @@ def teacher_portal():
         grouped_remarks=grouped_remarks,
         course_summaries=course_summaries
     )
-
   
 @app.route('/admin_portal')
 def admin_portal():
@@ -697,9 +695,9 @@ def schedule_emails():
         time.sleep(60)  # wait one minute
 
 if __name__ == '__main__':
-     app.run(debug=True)
+     # app.run(debug=True)
 
-    # threading.Thread(target=schedule_emails, daemon=True).start()
-    # port = int(os.environ.get('PORT', 5000))
-    # app.run(host="0.0.0.0", port=port, debug=True)
+    threading.Thread(target=schedule_emails, daemon=True).start()
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
 
