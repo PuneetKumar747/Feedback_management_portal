@@ -360,6 +360,21 @@
                 }
             });
 
+                $("#themeToggle").click(function() {
+        $('body').toggleClass('dark-mode');
+        const isDarkMode = $('body').hasClass('dark-mode');
+        $(this).text(isDarkMode ? 'Switch to Day Mode' : 'Switch to Night Mode');
+        localStorage.setItem('darkMode', isDarkMode);
+    });
+
+    // Check for saved theme preference
+    if(localStorage.getItem('darkMode') === 'true') {
+        $('body').addClass('dark-mode');
+        $("#themeToggle").text('Switch to Day Mode');
+    }
+});
+            
+
             $("#final-submit").click(function () {
                 const formsData = {};
                 let allFormsValid = true;
