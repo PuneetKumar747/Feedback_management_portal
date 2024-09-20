@@ -5,9 +5,9 @@ import schedule
 import time
 
 def send_email():
-    sender_email = "kpuneet474@gmail.com"
-    # receiver_emails = ["su-cof2027@sitare.org"]  # List of recipient emails
-    receiver_emails = ["su-cof2026@sitare.org"]  # List of recipient emails
+    sender_email = "su-23028@sitare.org"
+    receiver_emails = ["kpuneet474@gmail.com"]  # List of recipient emails
+    # receiver_emails = ["su-cof2026@sitare.org"]  # List of recipient emails
     subject = "Weekly Reminder for feedback"
     body = "All students, please fill the feedback for all subjects."
 
